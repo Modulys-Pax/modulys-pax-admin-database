@@ -362,16 +362,94 @@ CMD ["npm", "start"]
 
 1. Fork the repository
 2. Create a branch for your feature (`git checkout -b feature/new-feature`)
-3. Commit your changes (`git commit -m 'Add new feature'`)
+3. Commit your changes following Conventional Commits
 4. Push to the branch (`git push origin feature/new-feature`)
 5. Open a Pull Request
 
+### Conventional Commits
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) specification with **commitlint** and **husky** to ensure consistent commit messages.
+
+#### Commit Message Format
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Commit Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `feat` | New feature | `feat(auth): add password recovery` |
+| `fix` | Bug fix | `fix(vehicles): resolve pagination issue` |
+| `docs` | Documentation changes | `docs: update API examples` |
+| `style` | Code style (formatting, no logic change) | `style: fix indentation` |
+| `refactor` | Code refactoring | `refactor(stock): simplify calculations` |
+| `perf` | Performance improvements | `perf(queries): add database indexes` |
+| `test` | Adding or fixing tests | `test(auth): add login unit tests` |
+| `build` | Build system or dependencies | `build: upgrade Next.js to v14` |
+| `ci` | CI/CD configuration | `ci: add coverage report to workflow` |
+| `chore` | General maintenance | `chore: clean up unused imports` |
+| `revert` | Revert a commit | `revert: undo last migration` |
+
+#### Scope (Optional)
+
+The scope provides additional context about what part of the codebase is affected:
+
+- `auth` - Authentication
+- `vehicles` - Fleet management
+- `stock` - Inventory
+- `financial` - Financial module
+- `employees` - HR module
+- `chat` - Internal chat
+- `api` - API changes
+- `ui` - UI components
+
+#### Examples
+
+```bash
+# Feature with scope
+git commit -m "feat(chat): add file attachment support"
+
+# Bug fix
+git commit -m "fix(financial): correct wallet balance calculation"
+
+# Documentation
+git commit -m "docs: add deployment instructions"
+
+# Breaking change (with footer)
+git commit -m "feat(api)!: change authentication endpoint
+
+BREAKING CHANGE: /auth/login now requires email instead of username"
+```
+
+#### Validation
+
+Commits are automatically validated before being created. Invalid messages will be rejected:
+
+```bash
+# ❌ Invalid - will be rejected
+git commit -m "fixed bug"
+git commit -m "WIP"
+git commit -m "update"
+
+# ✅ Valid - will be accepted
+git commit -m "fix(auth): resolve token expiration issue"
+git commit -m "feat: add dashboard statistics"
+git commit -m "docs: update README"
+```
+
 ### Code Standards
 
-- **Commits**: Conventional Commits
-- **Branches**: `feature/`, `fix/`, `refactor/`
+- **Commits**: Conventional Commits (enforced by commitlint)
+- **Branches**: `feature/`, `fix/`, `refactor/`, `docs/`
 - **TypeScript**: Strict mode enabled
 - **Lint**: ESLint + Prettier
+- **Tests**: Jest (minimum 85% coverage)
 
 ## License
 
