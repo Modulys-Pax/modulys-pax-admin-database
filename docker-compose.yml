@@ -1,0 +1,178 @@
+# ============================================
+# Docker Compose - Produção
+# Spolier ERP - Sistema de Gestão
+# ============================================
+# 
+# Uso:
+#   Produção: docker compose up -d
+#   Build:    docker compose build --no-cache
+#   Logs:     docker compose logs -f
+#   Parar:    docker compose down
+#
+# Requisitos mínimos:
+#   - 4GB RAM (CX33 Hetzner recomendado)
+#   - 40GB SSD
+#   - Docker 24+
+#   - Docker Compose v2
+# ============================================
+
+services:
+  # ==========================================
+  # PostgreSQL Database
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: spolier-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-spolier}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Database password required}
+      POSTGRES_DB: ${DB_NAME:-spolier}
+      # Otimizações para servidor com 4GB RAM
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=pt_BR.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-spolier} -d ${DB_NAME:-spolier}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spolier-network
+    # Limites de recursos (ajustar conforme servidor)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # ==========================================
+  # Backend NestJS
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: spolier-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${DB_USER:-spolier}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-spolier}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?JWT secret required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://seu-dominio.com}
+    volumes:
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - spolier-network
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 384M
+
+  # ==========================================
+  # Frontend Next.js
+  # ==========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-wss://seu-dominio.com}
+    container_name: spolier-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - spolier-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # ==========================================
+  # Nginx Reverse Proxy
+  # ==========================================
+  nginx:
+    image: nginx:alpine
+    container_name: spolier-nginx
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - uploads_data:/app/uploads:ro
+      - certbot_certs:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    networks:
+      - spolier-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  # ==========================================
+  # Certbot (SSL/TLS automático)
+  # ==========================================
+  certbot:
+    image: certbot/certbot
+    container_name: spolier-certbot
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - spolier-network
+
+# ==========================================
+# Volumes Persistentes
+# ==========================================
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local
+  certbot_certs:
+    driver: local
+  certbot_www:
+    driver: local
+
+# ==========================================
+# Rede
+# ==========================================
+networks:
+  spolier-network:
+    driver: bridge

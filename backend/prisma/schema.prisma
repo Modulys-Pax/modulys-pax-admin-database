@@ -1,0 +1,1076 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Configuração do seed
+// Execute: npm run prisma:seed
+
+// ============================================
+// STAGE 02 - AUTENTICAÇÃO & AUTORIZAÇÃO
+// ============================================
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  name      String
+  active    Boolean   @default(true)
+  companyId String?
+  branchId  String?
+  roleId    String
+  role      Role      @relation(fields: [roleId], references: [id])
+  company   Company?  @relation(fields: [companyId], references: [id])
+  branch    Branch?   @relation(fields: [branchId], references: [id])
+  employeeId String?   @unique
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  deletedAt DateTime?
+
+  refreshTokens            RefreshToken[]
+  conversationParticipants ConversationParticipant[]
+  sentMessages             Message[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model UnitOfMeasurement {
+  id          String   @id @default(uuid())
+  code        String   @unique // Código da unidade (ex: UN, KG, L, M, M2, M3)
+  name        String // Nome da unidade (ex: Unidade, Quilograma, Litro)
+  description String? // Descrição adicional
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  products Product[]
+
+  @@map("units_of_measurement")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  module      String
+  action      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  createdBy    String?
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revoked   Boolean  @default(false)
+
+  @@map("refresh_tokens")
+}
+
+// ============================================
+// STAGE 03 - CADASTROS BASE
+// ============================================
+
+model Company {
+  id        String    @id @default(uuid())
+  name      String
+  cnpj      String?   @unique
+  tradeName String?
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  deletedAt DateTime?
+
+  branches              Branch[]
+  users                 User[]
+  products              Product[]
+  employees             Employee[]
+  vehicles              Vehicle[]
+  vehicleDocuments      VehicleDocument[]
+  maintenanceOrders     MaintenanceOrder[]
+  warehouses            Warehouse[]
+  stocks                Stock[]
+  stockMovements        StockMovement[]
+  financialTransactions FinancialTransaction[]
+  accountsPayable       AccountPayable[]
+  accountsReceivable    AccountReceivable[]
+  salaries              Salary[]
+  vacations             Vacation[]
+  expenses              Expense[]
+  benefits              Benefit[]
+  employeeBenefits      EmployeeBenefit[]
+  vehicleMarkings       VehicleMarking[]
+  maintenanceLabels      MaintenanceLabel[]
+
+  @@map("companies")
+}
+
+model Branch {
+  id        String    @id @default(uuid())
+  name      String
+  code      String?
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  deletedAt DateTime?
+
+  users                 User[]
+  products              Product[]
+  employees             Employee[]
+  vehicles              Vehicle[]
+  vehicleDocuments      VehicleDocument[]
+  maintenanceOrders     MaintenanceOrder[]
+  warehouses            Warehouse[]
+  stocks                Stock[]
+  stockMovements        StockMovement[]
+  financialTransactions FinancialTransaction[]
+  accountsPayable       AccountPayable[]
+  accountsReceivable    AccountReceivable[]
+  salaries              Salary[]
+  vacations             Vacation[]
+  expenses              Expense[]
+  benefits              Benefit[]
+  employeeBenefits      EmployeeBenefit[]
+  vehicleMarkings       VehicleMarking[]
+  maintenanceLabels     MaintenanceLabel[]
+  branchBalance         BranchBalance?
+
+  @@unique([companyId, code])
+  @@map("branches")
+}
+
+model Product {
+  id                  String             @id @default(uuid())
+  name                String
+  code                String?
+  description         String?
+  unitOfMeasurementId String? // ID da unidade de medida
+  unitOfMeasurement   UnitOfMeasurement? @relation(fields: [unitOfMeasurementId], references: [id])
+  unit                String? // unidade de medida (UN, KG, L, etc) - DEPRECATED: usar unitOfMeasurementId
+  unitPrice           Decimal?           @default(0) // Preço unitário padrão do produto (R$/unidade, R$/kg, R$/L, etc)
+  minQuantity         Decimal?           @default(0) // Quantidade mínima em estoque para alerta de estoque baixo
+  companyId           String
+  branchId            String
+  company             Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch              Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  active              Boolean            @default(true)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  createdBy           String?
+  deletedAt           DateTime?
+
+  maintenanceMaterials     MaintenanceMaterial[]
+  stocks                   Stock[]
+  stockMovements           StockMovement[]
+
+  @@unique([companyId, branchId, code])
+  @@map("products")
+}
+
+model Employee {
+  id            String    @id @default(uuid())
+  name          String
+  cpf           String?
+  email         String?
+  phone         String?
+  position      String? // cargo
+  department    String? // departamento
+  hireDate      DateTime?
+  monthlySalary Decimal?  @default(0) // Salário mensal base do funcionário
+  companyId     String
+  branchId      String
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch        Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdBy     String?
+  deletedAt     DateTime?
+
+  user User?
+
+  maintenanceWorkers MaintenanceWorker[]
+  salaries           Salary[]
+  vacations          Vacation[]
+  expenses           Expense[]
+  benefits           EmployeeBenefit[]
+
+  @@map("employees")
+}
+
+// ============================================
+// STAGE 04 - GESTÃO DE FROTA
+// ============================================
+
+enum VehicleStatus {
+  ACTIVE // Ativo
+  MAINTENANCE // Em manutenção
+  STOPPED // Parado
+}
+
+model VehicleBrand {
+  id        String   @id @default(uuid())
+  name      String   @unique // Nome da marca (ex: Volvo, Mercedes-Benz, Scania)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  models   VehicleModel[]
+  vehicles Vehicle[]
+
+  @@map("vehicle_brands")
+}
+
+model VehicleModel {
+  id        String       @id @default(uuid())
+  brandId   String
+  brand     VehicleBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  name      String // Nome do modelo (ex: FH 540, Actros, R 450)
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  vehicles Vehicle[]
+
+  @@unique([brandId, name])
+  @@map("vehicle_models")
+}
+
+// Tipos de componente do veículo (cavalo, carretas, dolly)
+enum VehiclePlateType {
+  CAVALO           // Cavalo (caminhão trator)
+  PRIMEIRA_CARRETA // Primeira carreta
+  DOLLY            // Dolly
+  SEGUNDA_CARRETA  // Segunda carreta
+}
+
+model VehiclePlate {
+  id        String          @id @default(uuid())
+  vehicleId String
+  vehicle   Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  type      VehiclePlateType
+  plate     String
+
+  @@unique([vehicleId, type])
+  @@map("vehicle_plates")
+}
+
+model Vehicle {
+  id        String        @id @default(uuid())
+  brandId   String?
+  brand     VehicleBrand? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  modelId   String?
+  model     VehicleModel? @relation(fields: [modelId], references: [id], onDelete: SetNull)
+  year      Int?
+  color     String?
+  chassis   String?
+  renavam   String?
+  currentKm Int? // Quilometragem atual
+  status    VehicleStatus @default(ACTIVE)
+  companyId String
+  branchId  String
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch    Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  active    Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  createdBy String?
+  deletedAt DateTime?
+
+  plates                VehiclePlate[]
+  replacementItems      VehicleReplacementItem[]
+  statusHistory         VehicleStatusHistory[]
+  maintenanceOrders     MaintenanceOrder[]
+  documents             VehicleDocument[]
+  markings              VehicleMarking[]
+  maintenanceLabels     MaintenanceLabel[]
+
+  @@map("vehicles")
+}
+
+// Itens (texto) configurados por veículo para troca a cada X KM — não são produtos de estoque
+model VehicleReplacementItem {
+  id             String   @id @default(uuid())
+  vehicleId      String
+  vehicle        Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  name           String   // Nome/descrição do item (ex: Óleo Motor 15W40, Filtro de óleo)
+  replaceEveryKm Int      // Trocar a cada X KM neste veículo
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  maintenanceLabelReplacementItems MaintenanceLabelReplacementItem[]
+  maintenanceMaterials             MaintenanceMaterial[]
+
+  @@unique([vehicleId, name])
+  @@map("vehicle_replacement_items")
+}
+
+model VehicleStatusHistory {
+  id                 String           @id @default(uuid())
+  vehicleId          String
+  vehicle            Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  maintenanceOrderId String?          // Ordem de manutenção relacionada (quando status/notes referem-se a uma OM)
+  maintenanceOrder   MaintenanceOrder? @relation(fields: [maintenanceOrderId], references: [id], onDelete: SetNull)
+  status             VehicleStatus
+  km                 Int?             // Quilometragem no momento da mudança
+  notes              String?          // Observações sobre a mudança
+  createdAt          DateTime         @default(now())
+  createdBy          String?
+
+  @@map("vehicle_status_history")
+}
+
+enum VehicleDocumentType {
+  CRVL // Certificado de Registro e Licenciamento de Veículo
+  LICENSING // Licenciamento
+}
+
+model VehicleDocument {
+  id          String              @id @default(uuid())
+  vehicleId   String
+  vehicle     Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  type        VehicleDocumentType
+  fileName    String // Nome original do arquivo
+  filePath    String // Caminho do arquivo no sistema (local ou MinIO)
+  fileSize    Int? // Tamanho do arquivo em bytes
+  mimeType    String? // Tipo MIME do arquivo
+  description String? // Descrição opcional do documento
+  expiryDate  DateTime? // Data de validade (para licenciamentos)
+  companyId   String
+  branchId    String
+  company     Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch      Branch              @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  createdBy   String?
+  deletedAt   DateTime?
+
+  @@map("vehicle_documents")
+}
+
+
+// ============================================
+// STAGE 05 - MANUTENÇÃO DE VEÍCULOS
+// ============================================
+
+enum MaintenanceOrderStatus {
+  OPEN // Aberta
+  IN_PROGRESS // Em execução
+  PAUSED // Pausada
+  COMPLETED // Concluída
+  CANCELLED // Cancelada
+}
+
+enum MaintenanceType {
+  PREVENTIVE // Preventiva
+  CORRECTIVE // Corretiva
+}
+
+enum MaintenanceTimelineEvent {
+  STARTED // Iniciada
+  PAUSED // Pausada
+  RESUMED // Retomada
+  COMPLETED // Concluída
+  CANCELLED // Cancelada
+}
+
+model MaintenanceOrder {
+  id               String                 @id @default(uuid())
+  orderNumber      String // Número da ordem (gerado automaticamente)
+  vehicleId        String
+  vehicle          Vehicle                @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  type             MaintenanceType
+  status           MaintenanceOrderStatus @default(OPEN)
+  kmAtEntry        Int? // KM na entrada
+  serviceDate      DateTime? // Data em que o serviço foi realizado (ex.: troca na estrada)
+  description      String? // Descrição do problema/serviço
+  observations     String? // Observações gerais
+  totalCost        Decimal?               @default(0) // Custo total calculado
+  totalTimeMinutes Int?                   @default(0) // Tempo total em minutos
+  attachmentFileName String? // Nome original do anexo (ex.: nota fiscal de terceiro)
+  attachmentFilePath String? // Caminho do arquivo (uploads/maintenance-orders/...)
+  companyId        String
+  branchId         String
+  company          Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch           Branch                 @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  createdBy        String?
+  deletedAt        DateTime?
+
+  workers                 MaintenanceWorker[]
+  services                MaintenanceService[]
+  materials               MaintenanceMaterial[]
+  timeline                MaintenanceTimeline[]
+  stockMovements          StockMovement[]
+  vehicleStatusHistoryEntries VehicleStatusHistory[]
+
+  @@unique([companyId, branchId, orderNumber])
+  @@map("maintenance_orders")
+}
+
+model MaintenanceWorker {
+  id                 String           @id @default(uuid())
+  maintenanceOrderId String
+  maintenanceOrder   MaintenanceOrder @relation(fields: [maintenanceOrderId], references: [id], onDelete: Cascade)
+  employeeId         String
+  employee           Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  isResponsible      Boolean          @default(false) // Responsável pela OM
+  createdAt          DateTime         @default(now())
+  createdBy          String?
+
+  @@unique([maintenanceOrderId, employeeId])
+  @@map("maintenance_workers")
+}
+
+model MaintenanceService {
+  id                 String           @id @default(uuid())
+  maintenanceOrderId String
+  maintenanceOrder   MaintenanceOrder @relation(fields: [maintenanceOrderId], references: [id], onDelete: Cascade)
+  description        String // Descrição do serviço realizado
+  cost               Decimal?         @default(0) // Custo do serviço
+  createdAt          DateTime         @default(now())
+  createdBy          String?
+
+  @@map("maintenance_services")
+}
+
+model MaintenanceMaterial {
+  id                     String                 @id @default(uuid())
+  maintenanceOrderId     String
+  maintenanceOrder       MaintenanceOrder       @relation(fields: [maintenanceOrderId], references: [id], onDelete: Cascade)
+  productId              String
+  product                Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vehicleReplacementItemId String?               // Item de troca por KM ao qual este material está vinculado (opcional)
+  vehicleReplacementItem  VehicleReplacementItem? @relation(fields: [vehicleReplacementItemId], references: [id], onDelete: SetNull)
+  quantity                Decimal                // Quantidade consumida
+  unitCost               Decimal?                @default(0) // Custo unitário no momento do consumo
+  totalCost              Decimal?                @default(0) // Custo total (quantity * unitCost)
+  createdAt              DateTime                @default(now())
+  createdBy              String?
+
+  @@map("maintenance_materials")
+}
+
+model MaintenanceTimeline {
+  id                 String                   @id @default(uuid())
+  maintenanceOrderId String
+  maintenanceOrder   MaintenanceOrder         @relation(fields: [maintenanceOrderId], references: [id], onDelete: Cascade)
+  event              MaintenanceTimelineEvent
+  notes              String? // Observações sobre o evento
+  createdAt          DateTime                 @default(now())
+  createdBy          String?
+
+  @@map("maintenance_timeline")
+}
+
+// ============================================
+// STAGE 06 - ESTOQUE & ALMOXARIFADO
+// ============================================
+
+enum StockMovementType {
+  ENTRY // Entrada
+  EXIT // Saída
+}
+
+model Warehouse {
+  id          String    @id @default(uuid())
+  code        String
+  name        String
+  description String?
+  companyId   String
+  branchId    String
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch      Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+  deletedAt   DateTime?
+
+  stocks        Stock[]
+
+  @@unique([companyId, branchId, code])
+  @@map("warehouses")
+}
+
+model Stock {
+  id          String    @id @default(uuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  quantity    Decimal   @default(0) // Quantidade atual em estoque
+  averageCost Decimal   @default(0) // Custo médio ponderado
+  companyId   String
+  branchId    String
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch      Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+
+  movements StockMovement[]
+
+  @@unique([productId, warehouseId])
+  @@map("stocks")
+}
+
+model StockMovement {
+  id                 String            @id @default(uuid())
+  type               StockMovementType
+  productId          String
+  product            Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity           Decimal // Quantidade movimentada
+  unitCost           Decimal? // Custo unitário (para entradas)
+  totalCost          Decimal? // Custo total (quantity * unitCost)
+  documentNumber     String? // Número do documento (NF, etc)
+  notes              String? // Observações
+  maintenanceOrderId String? // Se a movimentação foi gerada por uma ordem de manutenção
+  maintenanceOrder   MaintenanceOrder? @relation(fields: [maintenanceOrderId], references: [id])
+  companyId          String
+  branchId           String
+  company            Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch             Branch            @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt          DateTime          @default(now())
+  createdBy          String?
+  Stock              Stock?            @relation(fields: [stockId], references: [id])
+  stockId            String?
+
+  @@map("stock_movements")
+}
+
+// ============================================
+// STAGE 07 - FINANCEIRO
+// ============================================
+
+enum TransactionType {
+  INCOME // Receita
+  EXPENSE // Despesa
+}
+
+enum TransactionOriginType {
+  MAINTENANCE // Manutenção
+  STOCK // Estoque
+  HR // Recursos Humanos
+  MANUAL // Manual
+}
+
+enum AccountPayableStatus {
+  PENDING // Pendente
+  PAID // Paga
+  CANCELLED // Cancelada
+}
+
+enum AccountReceivableStatus {
+  PENDING // Pendente
+  RECEIVED // Recebida
+  CANCELLED // Cancelada
+}
+
+model FinancialTransaction {
+  id              String                 @id @default(uuid())
+  type            TransactionType // INCOME ou EXPENSE
+  amount          Decimal // Valor da transação
+  description     String? // Descrição
+  transactionDate DateTime // Data da transação
+  originType      TransactionOriginType? // Tipo de origem (MANUTENÇÃO, ESTOQUE, etc)
+  originId        String? // ID da origem (ex: maintenanceOrderId)
+  documentNumber  String? // Número do documento (NF, etc)
+  notes           String? // Observações
+  companyId       String
+  branchId        String
+  company         Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch          Branch                 @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  createdBy       String?
+
+  // Relações com outras entidades
+  accountPayable    AccountPayable?
+  accountReceivable AccountReceivable?
+  salary            Salary?
+  expense           Expense?
+
+  @@map("financial_transactions")
+}
+
+model AccountPayable {
+  id                     String                 @id @default(uuid())
+  description            String
+  amount                 Decimal // Valor a pagar
+  dueDate                DateTime // Data de vencimento
+  paymentDate            DateTime? // Data de pagamento
+  status                 AccountPayableStatus   @default(PENDING)
+  originType             TransactionOriginType? // Tipo de origem
+  originId               String? // ID da origem
+  documentNumber         String? // Número do documento (NF, etc)
+  notes                  String? // Observações
+  companyId              String
+  branchId               String
+  company                Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch                 Branch                 @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  financialTransactionId String?                @unique // Transação financeira gerada quando paga
+  financialTransaction   FinancialTransaction?  @relation(fields: [financialTransactionId], references: [id])
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  createdBy              String?
+  deletedAt              DateTime?
+
+  @@map("accounts_payable")
+}
+
+model AccountReceivable {
+  id                     String                  @id @default(uuid())
+  description            String
+  amount                 Decimal // Valor a receber
+  dueDate                DateTime // Data de vencimento
+  receiptDate            DateTime? // Data de recebimento
+  status                 AccountReceivableStatus @default(PENDING)
+  originType             TransactionOriginType? // Tipo de origem
+  originId               String? // ID da origem
+  documentNumber         String? // Número do documento (NF, etc)
+  notes                  String? // Observações
+  companyId              String
+  branchId               String
+  company                Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch                 Branch                  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  financialTransactionId String?                 @unique // Transação financeira gerada quando recebida
+  financialTransaction   FinancialTransaction?   @relation(fields: [financialTransactionId], references: [id])
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  createdBy              String?
+  deletedAt              DateTime?
+
+  @@map("accounts_receivable")
+}
+
+// ============================================
+// CARTEIRA / SALDO DA FILIAL
+// ============================================
+
+enum BalanceAdjustmentType {
+  MANUAL_ADJUSTMENT // Ajuste manual pelo admin
+  INITIAL_BALANCE // Saldo inicial
+  CORRECTION // Correção
+}
+
+model BranchBalance {
+  id        String   @id @default(uuid())
+  branchId  String   @unique
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  balance   Decimal  @default(0) // Saldo atual da filial
+  updatedAt DateTime @updatedAt
+
+  adjustments BalanceAdjustment[]
+
+  @@map("branch_balances")
+}
+
+model BalanceAdjustment {
+  id              String                @id @default(uuid())
+  branchBalanceId String
+  branchBalance   BranchBalance         @relation(fields: [branchBalanceId], references: [id], onDelete: Cascade)
+  previousBalance Decimal // Saldo anterior ao ajuste
+  newBalance      Decimal // Novo saldo após ajuste
+  adjustmentType  BalanceAdjustmentType // Tipo do ajuste
+  reason          String? // Motivo do ajuste
+  createdAt       DateTime              @default(now())
+  createdBy       String? // ID do usuário que fez o ajuste
+
+  @@map("balance_adjustments")
+}
+
+// ============================================
+// STAGE 08 - RECURSOS HUMANOS (RH)
+// ============================================
+
+enum VacationStatus {
+  PLANNED // Planejada
+  APPROVED // Aprovada
+  IN_PROGRESS // Em andamento
+  COMPLETED // Concluída
+  CANCELLED // Cancelada
+}
+
+enum ExpenseType {
+  TRANSPORT // Transporte
+  MEAL // Refeição
+  ACCOMMODATION // Hospedagem
+  OTHER // Outros
+}
+
+model Salary {
+  id                     String                @id @default(uuid())
+  employeeId             String
+  employee               Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  amount                 Decimal // Valor do salário
+  referenceMonth         Int // Mês de referência (1-12)
+  referenceYear          Int // Ano de referência
+  paymentDate            DateTime? // Data de pagamento
+  description            String? // Descrição/observações
+  companyId              String
+  branchId               String
+  company                Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch                 Branch                @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  financialTransactionId String?               @unique // Transação financeira gerada quando pago
+  financialTransaction   FinancialTransaction? @relation(fields: [financialTransactionId], references: [id])
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  createdBy              String?
+  deletedAt              DateTime?
+
+  @@unique([employeeId, referenceMonth, referenceYear, companyId, branchId])
+  @@map("salaries")
+}
+
+model Vacation {
+  id                String         @id @default(uuid())
+  employeeId        String
+  employee          Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  startDate         DateTime // Data de início
+  endDate           DateTime // Data de término
+  days              Int // Quantidade de dias de férias
+  soldDays          Int            @default(0) // Dias vendidos (abono pecuniário, máx 10)
+  advance13thSalary Boolean        @default(false) // Antecipação da 1ª parcela do 13º salário
+  status            VacationStatus @default(PLANNED)
+  observations      String? // Observações
+
+  // Valores financeiros calculados
+  monthlySalary     Decimal?       @db.Decimal(12, 2) // Salário mensal na época
+  vacationBase      Decimal?       @db.Decimal(12, 2) // Valor base das férias (dias gozados)
+  vacationThird     Decimal?       @db.Decimal(12, 2) // 1/3 constitucional
+  vacationTotal     Decimal?       @db.Decimal(12, 2) // Total férias (base + 1/3)
+  soldDaysValue     Decimal?       @db.Decimal(12, 2) // Valor dos dias vendidos (abono)
+  soldDaysThird     Decimal?       @db.Decimal(12, 2) // 1/3 sobre abono
+  soldDaysTotal     Decimal?       @db.Decimal(12, 2) // Total abono (valor + 1/3)
+  advance13thValue  Decimal?       @db.Decimal(12, 2) // Valor do adiantamento do 13º
+  grossTotal        Decimal?       @db.Decimal(12, 2) // Total bruto
+  inss              Decimal?       @db.Decimal(12, 2) // Desconto INSS
+  irrf              Decimal?       @db.Decimal(12, 2) // Desconto IRRF
+  totalDeductions   Decimal?       @db.Decimal(12, 2) // Total de descontos
+  netTotal          Decimal?       @db.Decimal(12, 2) // Valor líquido a receber
+  fgts              Decimal?       @db.Decimal(12, 2) // FGTS (custo empresa)
+  employerCost      Decimal?       @db.Decimal(12, 2) // Custo total empresa
+
+  companyId         String
+  branchId          String
+  company           Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch            Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  createdBy         String?
+  deletedAt         DateTime?
+
+  @@map("vacations")
+}
+
+model Expense {
+  id                     String                @id @default(uuid())
+  employeeId             String?
+  employee               Employee?             @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  type                   ExpenseType
+  amount                 Decimal // Valor da despesa
+  description            String // Descrição da despesa
+  expenseDate            DateTime // Data da despesa
+  documentNumber         String? // Número do documento (recibo, etc)
+  companyId              String
+  branchId               String
+  company                Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch                 Branch                @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  financialTransactionId String?               @unique // Transação financeira gerada
+  financialTransaction   FinancialTransaction? @relation(fields: [financialTransactionId], references: [id])
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  createdBy              String?
+  deletedAt              DateTime?
+
+  @@map("expenses")
+}
+
+// ============================================
+// BENEFÍCIOS E IMPOSTOS TRABALHISTAS
+// ============================================
+
+// Catálogo geral de benefícios (reutilizável)
+model Benefit {
+  id              String    @id @default(uuid())
+  name            String // Nome do benefício (ex: "Vale Transporte", "Vale Refeição", "Plano de Saúde", etc)
+  dailyCost       Decimal // Custo diário para a empresa (R$)
+  employeeValue   Decimal // Valor que o funcionário recebe por dia (R$)
+  includeWeekends Boolean   @default(false) // Se conta sábados e domingos
+  description     String? // Descrição/observações
+  active          Boolean   @default(true)
+  companyId       String
+  branchId        String
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch          Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdBy       String?
+  deletedAt       DateTime?
+
+  employeeBenefits EmployeeBenefit[]
+
+  @@map("benefits")
+}
+
+// Associação de benefício a funcionário
+model EmployeeBenefit {
+  id         String    @id @default(uuid())
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  benefitId  String // Referência ao benefício do catálogo
+  benefit    Benefit   @relation(fields: [benefitId], references: [id], onDelete: Restrict)
+  active     Boolean   @default(true)
+  startDate  DateTime? // Data de início do benefício para este funcionário
+  companyId  String
+  branchId   String
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch     Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  createdBy  String?
+  deletedAt  DateTime?
+
+  @@map("employee_benefits")
+}
+
+
+// ============================================
+// STAGE 11 - AUDITORIA
+// ============================================
+
+enum AuditAction {
+  CREATE // Criação
+  UPDATE // Atualização
+  DELETE // Exclusão (soft delete)
+  RESTORE // Restauração (se houver)
+  LOGIN // Login
+  LOGOUT // Logout
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  entityType  String // Tipo da entidade (ex: "Product", "Vehicle", "User")
+  entityId    String // ID da entidade
+  action      AuditAction // Ação realizada
+  userId      String? // ID do usuário que realizou a ação
+  userName    String? // Nome do usuário (cache para performance)
+  userEmail   String? // Email do usuário (cache)
+  companyId   String? // ID da empresa (se aplicável)
+  branchId    String? // ID da filial (se aplicável)
+  oldValues   Json? // Valores anteriores (para UPDATE)
+  newValues   Json? // Valores novos (para CREATE/UPDATE)
+  changes     Json? // Diferenças entre oldValues e newValues
+  ipAddress   String? // Endereço IP do usuário
+  userAgent   String? // User agent do navegador
+  description String? // Descrição adicional da ação
+  createdAt   DateTime    @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([companyId])
+  @@index([branchId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================
+// MARCAÇÕES DE VEÍCULOS
+// ============================================
+
+model VehicleMarking {
+  id        String   @id @default(uuid())
+  vehicleId String
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  km        Int // Quilometragem quando o veículo chegou
+  companyId String
+  branchId  String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  @@index([vehicleId])
+  @@index([companyId, branchId])
+  @@index([createdAt])
+  @@map("vehicle_markings")
+}
+
+// ============================================
+// ETIQUETAS DE MANUTENÇÃO
+// ============================================
+
+model MaintenanceLabel {
+  id        String   @id @default(uuid())
+  vehicleId String
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  companyId String
+  branchId  String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  replacementItems MaintenanceLabelReplacementItem[]
+
+  @@index([vehicleId])
+  @@index([companyId, branchId])
+  @@index([createdAt])
+  @@map("maintenance_labels")
+}
+
+// Histórico: qual item de troca foi registrado nesta etiqueta e em qual KM
+model MaintenanceLabelReplacementItem {
+  id                     String                 @id @default(uuid())
+  maintenanceLabelId     String
+  maintenanceLabel       MaintenanceLabel       @relation(fields: [maintenanceLabelId], references: [id], onDelete: Cascade)
+  vehicleReplacementItemId String
+  vehicleReplacementItem VehicleReplacementItem @relation(fields: [vehicleReplacementItemId], references: [id], onDelete: Cascade)
+  lastChangeKm           Int
+  createdAt              DateTime               @default(now())
+  createdBy              String?
+
+  @@unique([maintenanceLabelId, vehicleReplacementItemId])
+  @@index([vehicleReplacementItemId])
+  @@map("maintenance_label_replacement_items")
+}
+
+// ============================================
+// CHAT INTERNO
+// ============================================
+
+model Conversation {
+  id        String   @id @default(uuid())
+  name      String?  // Nome do grupo (null para conversas individuais)
+  isGroup   Boolean  @default(false) // Se é um grupo ou conversa individual
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?  // ID do usuário que criou a conversa
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([createdAt])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime?    // Última vez que o usuário leu a conversa
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId])
+  @@map("conversation_participants")
+}
+
+enum MessageType {
+  TEXT   // Mensagem de texto
+  IMAGE  // Imagem
+  FILE   // Arquivo
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  type           MessageType  @default(TEXT)
+  content        String?      // Conteúdo da mensagem (texto ou descrição do arquivo)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?    // Soft delete para mensagens
+
+  attachments MessageAttachment[]
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+model MessageAttachment {
+  id        String   @id @default(uuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  fileName  String   // Nome original do arquivo
+  filePath  String   // Caminho do arquivo no sistema
+  fileSize  Int?     // Tamanho do arquivo em bytes
+  mimeType  String?  // Tipo MIME do arquivo
+  createdAt DateTime @default(now())
+
+  @@index([messageId])
+  @@map("message_attachments")
+}

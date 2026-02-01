@@ -1,0 +1,129 @@
+# ============================================
+# Nginx - Configuração SEM SSL (apenas IP)
+# Use esta configuração se não tiver domínio
+# ============================================
+#
+# Para usar:
+#   1. Renomeie default.conf para default.conf.bak
+#   2. Renomeie este arquivo para default.conf
+#   3. Reinicie o nginx: docker compose restart nginx
+# ============================================
+
+# Upstream para o backend
+upstream backend {
+    server backend:3001;
+    keepalive 32;
+}
+
+# Upstream para o frontend
+upstream frontend {
+    server frontend:3000;
+    keepalive 32;
+}
+
+# HTTP Server (sem SSL)
+server {
+    listen 80;
+    server_name _;
+
+    # Logs
+    access_log /var/log/nginx/spolier_access.log main;
+    error_log /var/log/nginx/spolier_error.log warn;
+
+    # ==========================================
+    # API Backend
+    # ==========================================
+    location /api/ {
+        proxy_pass http://backend/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # ==========================================
+    # WebSocket
+    # ==========================================
+    location /socket.io {
+        proxy_pass http://backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSocket específico
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+
+    # ==========================================
+    # Arquivos de Upload (Estáticos)
+    # ==========================================
+    location /uploads {
+        alias /app/uploads;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        add_header X-Content-Type-Options "nosniff";
+
+        location ~* \.(jpg|jpeg|png|gif|webp|pdf|mp4|webm)$ {
+            try_files $uri =404;
+        }
+    }
+
+    # ==========================================
+    # Swagger/OpenAPI
+    # ==========================================
+    location /api/docs {
+        proxy_pass http://backend/api/docs;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # ==========================================
+    # Health Check
+    # ==========================================
+    location /health {
+        access_log off;
+        proxy_pass http://backend/api/health;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+
+    # ==========================================
+    # Frontend Next.js
+    # ==========================================
+    location / {
+        proxy_pass http://frontend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # ==========================================
+    # Cache de arquivos estáticos do Next.js
+    # ==========================================
+    location /_next/static {
+        proxy_pass http://frontend;
+        proxy_http_version 1.1;
+        expires 365d;
+        add_header Cache-Control "public, immutable";
+    }
+}

@@ -1,0 +1,16 @@
+-- AlterTable
+ALTER TABLE "vacations" ADD COLUMN     "advance13thValue" DECIMAL(12,2),
+ADD COLUMN     "employerCost" DECIMAL(12,2),
+ADD COLUMN     "fgts" DECIMAL(12,2),
+ADD COLUMN     "grossTotal" DECIMAL(12,2),
+ADD COLUMN     "inss" DECIMAL(12,2),
+ADD COLUMN     "irrf" DECIMAL(12,2),
+ADD COLUMN     "monthlySalary" DECIMAL(12,2),
+ADD COLUMN     "netTotal" DECIMAL(12,2),
+ADD COLUMN     "soldDaysThird" DECIMAL(12,2),
+ADD COLUMN     "soldDaysTotal" DECIMAL(12,2),
+ADD COLUMN     "soldDaysValue" DECIMAL(12,2),
+ADD COLUMN     "totalDeductions" DECIMAL(12,2),
+ADD COLUMN     "vacationBase" DECIMAL(12,2),
+ADD COLUMN     "vacationThird" DECIMAL(12,2),
+ADD COLUMN     "vacationTotal" DECIMAL(12,2);
