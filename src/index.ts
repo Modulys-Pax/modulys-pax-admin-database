@@ -1,4 +1,4 @@
-import { PrismaClient } from '.prisma/admin-client';
+import { PrismaClient } from '../generated/client';
 
 // Singleton pattern para evitar múltiplas conexões
 const globalForPrisma = globalThis as unknown as {
@@ -16,7 +16,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Re-export PrismaClient para uso externo
-export { PrismaClient } from '.prisma/admin-client';
+export { PrismaClient } from '../generated/client';
 
-// Re-export todos os tipos gerados pelo Prisma
-export * from '.prisma/admin-client';
+// Re-export todos os tipos gerados pelo Prisma (enums, tipos, namespace Prisma)
+export * from '../generated/client';
