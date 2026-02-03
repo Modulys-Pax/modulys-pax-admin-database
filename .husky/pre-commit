@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Build e inclui dist/ e generated/ no commit (consumo via git install)
+npm run build
+git add dist/ generated/

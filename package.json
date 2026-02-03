@@ -7,14 +7,14 @@
   "scripts": {
     "build": "prisma generate && tsc",
     "dev": "tsc --watch",
-    "prepare": "prisma generate && npm run build",
     "prepublishOnly": "npm run build",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:prod": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "ts-node prisma/seed.ts"
+    "db:seed": "ts-node prisma/seed.ts",
+    "prepare": "husky"
   },
   "keywords": [
     "prisma",
@@ -32,6 +32,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.6",
+    "husky": "^9.0.11",
     "prisma": "^5.7.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
