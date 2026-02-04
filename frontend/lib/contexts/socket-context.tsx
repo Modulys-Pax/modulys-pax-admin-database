@@ -113,9 +113,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const socketUrl = apiUrl.replace('/api', '');
+    // WebSocket em tempo real: usar serviço de chat diretamente (Socket.IO namespace /chat)
+    const socketBaseUrl = process.env.NEXT_PUBLIC_CHAT_WS_URL || apiUrl.replace(/\/api\/?$/, '');
 
-    const newSocket = io(`${socketUrl}/chat`, {
+    const newSocket = io(`${socketBaseUrl}/chat`, {
       auth: {
         token,
       },
