@@ -1,17 +1,17 @@
-# @grayskull/admin-database
+# @modulys-pax/admin-database
 
-Banco de dados master para o backoffice Grayskull. Gerencia tenants (clientes), planos, módulos e faturamento.
+Banco de dados master para o backoffice Modulys Pax. Gerencia tenants (clientes), planos, módulos e faturamento.
 
 ## Instalação
 
 ```bash
-npm install github:seu-usuario/grayskull-admin-database
+npm install github:seu-usuario/modulys-pax-admin-database
 ```
 
 ## Uso
 
 ```typescript
-import { adminPrisma } from '@grayskull/admin-database';
+import { adminPrisma } from '@modulys-pax/admin-database';
 
 // Listar todos os tenants ativos
 const tenants = await adminPrisma.tenant.findMany({
@@ -24,7 +24,7 @@ const tenants = await adminPrisma.tenant.findMany({
 Defina a variável de ambiente `ADMIN_DATABASE_URL`:
 
 ```env
-ADMIN_DATABASE_URL="postgresql://user:password@localhost:5432/grayskull_admin?schema=public"
+ADMIN_DATABASE_URL="postgresql://user:password@localhost:5432/modulys_pax_admin?schema=public"
 ```
 
 ## Modelos

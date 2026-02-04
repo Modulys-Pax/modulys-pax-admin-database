@@ -14,12 +14,12 @@ async function main() {
   const adminPassword = await bcrypt.hash('admin123', 10);
   
   const adminUser = await prisma.adminUser.upsert({
-    where: { email: 'admin@grayskull.com.br' },
+    where: { email: 'admin@modulys-pax.com.br' },
     update: {},
     create: {
-      email: 'admin@grayskull.com.br',
+      email: 'admin@modulys-pax.com.br',
       password: adminPassword,
-      name: 'Administrador Grayskull',
+      name: 'Administrador Modulys Pax',
       role: 'SUPER_ADMIN',
     },
   });
@@ -140,7 +140,7 @@ async function main() {
   console.log('✅ SEED CONCLUÍDO!');
   console.log('════════════════════════════════════════════════════════════════');
   console.log('\n📋 Credenciais do Admin:');
-  console.log('   Email: admin@grayskull.com.br');
+  console.log('   Email: admin@modulys-pax.com.br');
   console.log('   Senha: admin123');
   console.log('\n🎯 Próximos passos:');
   console.log('   1. Inicie a API: npm run dev');

@@ -1,7 +1,7 @@
 {
-  "name": "@grayskull/admin-database",
+  "name": "@modulys-pax/admin-database",
   "version": "1.0.0",
-  "description": "Master database for Grayskull Admin - Tenant management",
+  "description": "Master database for Modulys Pax Admin - Tenant management",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -19,7 +19,7 @@
   "keywords": [
     "prisma",
     "database",
-    "Grayskull",
+    "modulys-pax",
     "admin",
     "tenant"
   ],
