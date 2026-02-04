@@ -31,7 +31,7 @@ async function main() {
   // ============================================================
   console.log('\n📦 Configurando módulos...');
   
-  // Remove módulos não implementados (para manter somente o que existe)
+  // Remove módulos não implementados (não inclui internal_chat)
   const modulesToRemove = ['hr', 'fleet', 'financial', 'stock', 'chat'];
   for (const code of modulesToRemove) {
     const mod = await prisma.module.findUnique({ where: { code } });
@@ -42,8 +42,8 @@ async function main() {
       console.log(`   🗑️ Removido: ${code}`);
     }
   }
-  
-  // Cria/atualiza apenas o Core (autenticação, empresa, funcionários, permissões)
+
+  // Core (obrigatório)
   const coreModule = await prisma.module.upsert({
     where: { code: 'core' },
     update: { name: 'Core', description: 'Autenticação, usuários, empresa, permissões', isCore: true },
@@ -55,6 +55,19 @@ async function main() {
     },
   });
   console.log(`   ✅ Módulo: ${coreModule.name} (${coreModule.code})`);
+
+  // Chat interno (módulo padrão, migrations SQL só quando habilitado)
+  const internalChatModule = await prisma.module.upsert({
+    where: { code: 'internal_chat' },
+    update: { name: 'Chat interno', description: 'Chat interno entre colaboradores' },
+    create: {
+      code: 'internal_chat',
+      name: 'Chat interno',
+      description: 'Chat interno entre colaboradores (canais e mensagens)',
+      isCore: false,
+    },
+  });
+  console.log(`   ✅ Módulo: ${internalChatModule.name} (${internalChatModule.code})`);
 
   // ============================================================
   // 3. CRIAR PLANOS
@@ -81,8 +94,12 @@ async function main() {
     update: {},
     create: { planId: basicPlan.id, moduleId: coreModule.id },
   });
-  
-  console.log(`   ✅ Plano: ${basicPlan.name} - R$ ${basicPlan.price}/mês (core)`);
+  await prisma.planModule.upsert({
+    where: { planId_moduleId: { planId: basicPlan.id, moduleId: internalChatModule.id } },
+    update: {},
+    create: { planId: basicPlan.id, moduleId: internalChatModule.id },
+  });
+  console.log(`   ✅ Plano: ${basicPlan.name} - R$ ${basicPlan.price}/mês (core + chat)`);
 
   // Plano Profissional
   const proPlan = await prisma.plan.upsert({
@@ -104,8 +121,12 @@ async function main() {
     update: {},
     create: { planId: proPlan.id, moduleId: coreModule.id },
   });
-  
-  console.log(`   ✅ Plano: ${proPlan.name} - R$ ${proPlan.price}/mês (core)`);
+  await prisma.planModule.upsert({
+    where: { planId_moduleId: { planId: proPlan.id, moduleId: internalChatModule.id } },
+    update: {},
+    create: { planId: proPlan.id, moduleId: internalChatModule.id },
+  });
+  console.log(`   ✅ Plano: ${proPlan.name} - R$ ${proPlan.price}/mês (core + chat)`);
 
   // Plano Enterprise
   const enterprisePlan = await prisma.plan.upsert({
